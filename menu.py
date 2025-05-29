@@ -16,6 +16,7 @@ class Menu:
         self.auth = Auth(self.db)
         self.acct_mgr = AccountManager(self.db)
         self.txn_mgr = TransactionManager(self.db)
+        self.history = History(self.db)
         self.admin = Admin(self.db)
 
     def main_menu(self):
