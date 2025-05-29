@@ -2,6 +2,7 @@ import sys
 from auth import Auth
 from account import AccountManager
 from transaction import TransactionManager
+from history import History
 from admin import Admin
 from database import Database
 
