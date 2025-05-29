@@ -6,6 +6,7 @@ from admin import Admin
 from database import Database
 
 
+
 class Menu:
     ADMIN_ACCT_NO = '0000000001'
 
@@ -75,7 +76,7 @@ class Menu:
     def _user_menu(self, acct_no: str):
         while True:
             print("\n--- Account Menu ---")
-            print("1. Deposit   2. Withdraw   3. Transfer   4. Balance  5. Logout")
+            print("1. Deposit   2. Withdraw   3. Transfer   4. Balance   5. Mini Statement   6. Logout")
             choice = input("Select: ")
             if choice == '1':
                 amount = float(input("Amount to deposit: "))
@@ -96,6 +97,8 @@ class Menu:
                 self.db.close()
                 print(f"Current balance: {balance}")
             elif choice == '5':
+                self.history.mini_statement(acct_no)
+            elif choice == '6':
                 print("Logging out...")
                 break
             else:
@@ -153,3 +156,10 @@ class Menu:
         print("\nUsers:")
         for acct_no, name, balance in users:
             print(f"- {acct_no} | Balance: {balance} | {name}")
+        to_del = input("Enter account number to delete (or press Enter to skip): ")
+        if to_del:
+            confirm = input(f"Confirm delete {to_del}? (Y/N): ").strip().upper()
+            if confirm == 'Y':
+                self.admin.delete_user(to_del)
+            else:
+                print("Deletion canceled.")

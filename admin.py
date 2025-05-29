@@ -51,5 +51,19 @@ class Admin:
         self.db.close()
         return users
 
+    def delete_user(self, account_number: str):
+        # Prevent deletion of the admin account
+        if account_number == self.ADMIN_ACCT_NO:
+            print(f"Error: Cannot delete admin account {account_number}.")
+            return
+
+        self.db.connect()
+        self.db.cursor.execute(
+            "DELETE FROM accounts WHERE account_number = %s",
+            (account_number,)
+        )
+        self.db.commit()
+        self.db.close()
+        print(f"Account {account_number} has been deleted.")
 
 
