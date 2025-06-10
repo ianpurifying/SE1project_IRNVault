@@ -58,7 +58,7 @@ class TransactionManager:
                 (account_number, amt)
             )
             self.db.commit()
-            print(f"Withdrew {amt}. New balance: {new_balance}")
+            print(f"Withdraw {amt}. New balance: {new_balance}")
         except Exception as e:
             self.db.rollback()
             print(f"Transaction failed: {e}")
