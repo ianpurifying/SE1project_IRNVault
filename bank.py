@@ -221,7 +221,7 @@ class BANKING:
             login_success, message = self.auth.login(acct_no, pin)
             if login_success:
                 self.current_user = acct_no
-                messagebox.showinfo("Success", f"Welcome! Login successful.")
+                messagebox.showinfo("Success", "Welcome! Login successful.")
                 self.show_user_menu()
             else:
                 messagebox.showerror("Login Failed", message)
@@ -444,7 +444,7 @@ class BANKING:
                 statement_text = self.history.format_mini_statement_text(self.current_user)
             else:
                 # If history object doesn't exist, create it or show error
-                statement_text = f"=== MINI STATEMENT ===\n"
+                statement_text = "=== MINI STATEMENT ===\n"
                 statement_text += f"Account: {self.current_user}\n"
                 statement_text += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
                 statement_text += "Error: History service not available.\n"
@@ -1332,12 +1332,12 @@ class BANKING:
             total_outstanding += float(remaining)
             loans_text += "-" * 80 + "\n"
         
-        loans_text += f"\n📊 PORTFOLIO SUMMARY:\n"
+        loans_text += "\n📊 PORTFOLIO SUMMARY:\n"
         loans_text += f"   Total Active Loans: {len(loans)}\n"
         loans_text += f"   Total Outstanding: ₱{total_outstanding:,.2f}\n"
         loans_text += f"   Overdue Loans: {overdue_count}\n"
         if overdue_count > 0:
-            loans_text += f"   ⚠️  Attention needed for overdue accounts\n"
+            loans_text += "   ⚠️  Attention needed for overdue accounts\n"
         loans_text += "="*80 + "\n"
         
         return loans_text
