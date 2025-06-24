@@ -46,6 +46,22 @@ class AuthService:
         if not account_number or not password:
             raise ValueError("Account number and password are required")
         
+        # First check if account was declined
+        decline_query = """
+            SELECT reason, declined_at 
+            FROM account_declines 
+            WHERE account_number = %s 
+            ORDER BY declined_at DESC 
+            LIMIT 1
+        """
+        decline_record = self.db.fetch_one(decline_query, (account_number,))
+        
+        if decline_record:
+            # Account was declined, show the reason
+            decline_reason = decline_record['reason']
+            decline_date = decline_record['declined_at']
+            raise ValueError(f"Account registration was declined. Reason: {decline_reason}")
+        
         # Get user from database
         query = "SELECT * FROM accounts WHERE account_number = %s"
         user = self.db.fetch_one(query, (account_number,))

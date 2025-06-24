@@ -1,9 +1,4 @@
-# banking-app/gui/gui_manager.py
-"""
-Main GUI Manager for the Banking Application
-Coordinates all GUI components and interfaces with backend services
-"""
-
+# banking-app/gui/gui_manager.py:
 import customtkinter as ctk
 from typing import Optional, Dict, Any, Callable
 from .components.welcome_window import WelcomeWindow
@@ -28,7 +23,7 @@ class GUIManager:
     def start(self):
         """Start the GUI application"""
         self.root = ctk.CTk()
-        self.root.title("Secure Banking System")
+        self.root.title("IRN Vault Banking System")
         self.root.geometry("800x600")
         center_window(self.root, 800, 600)
         

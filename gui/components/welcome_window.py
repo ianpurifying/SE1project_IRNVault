@@ -37,7 +37,7 @@ class WelcomeWindow:
         # Title
         title_label = ctk.CTkLabel(
             header_frame,
-            text="🏦 SECURE BANKING SYSTEM",
+            text="🏦 IRN Vault BANKING SYSTEM",
             font=ctk.CTkFont(size=32, weight="bold"),
             text_color=("#1f538d", "#4dabf7")
         )
@@ -60,7 +60,7 @@ class WelcomeWindow:
         # Welcome message
         welcome_label = ctk.CTkLabel(
             content_frame,
-            text="Welcome to your secure banking experience",
+            text="Welcome to the IRN Vault banking experience",
             font=ctk.CTkFont(size=18, weight="bold"),
             text_color=("#2e2e2e", "#ffffff")
         )
@@ -128,7 +128,7 @@ class WelcomeWindow:
         # Version info
         version_label = ctk.CTkLabel(
             footer_frame,
-            text="Secure Banking System v2.0",
+            text="IRN Vault Banking System v2.0",
             font=ctk.CTkFont(size=10),
             text_color=("gray50", "gray50")
         )

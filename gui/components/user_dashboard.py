@@ -1,9 +1,3 @@
-# banking-app/gui/components/user_dashboard.py
-"""
-User Dashboard Component
-Main interface for authenticated users
-"""
-
 import customtkinter as ctk
 from typing import Dict, Callable, Any
 import tkinter.messagebox as messagebox

@@ -25,7 +25,7 @@ class Settings:
     MIN_TRANSACTION_AMOUNT = 0.01
     
     # Application settings
-    APP_NAME = "Secure Banking System"
+    APP_NAME = "IRN Vault Banking System"
     APP_VERSION = "1.0.0"
     
     # Logging configuration

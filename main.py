@@ -56,7 +56,7 @@ class BankingApp:
         """Start the banking application with GUI"""
         try:
             logging.info("Starting banking application GUI")
-            print("Starting Secure Banking System...")
+            print("Starting IRN Vault Banking System...")
             self.gui_manager.start()
             
         except Exception as e:
@@ -233,7 +233,7 @@ def main():
     """Main entry point"""
     app = None
     try:
-        print("Initializing Secure Banking System...")
+        print("Initializing IRNVault Banking System...")
         app = BankingApp()
         app.run()
         

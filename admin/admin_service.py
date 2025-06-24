@@ -1,9 +1,3 @@
-# banking_app/admin/admin_service.py
-"""
-Admin service
-Handles admin operations like account approval and user management
-"""
-
 from typing import List, Dict, Any, Optional
 from db.database import Database
 
@@ -36,30 +30,6 @@ class AdminService:
         """
         return self.db.execute_query(query, (account_number,))
 
-    def reject_account(self, account_number: str, reason: str) -> bool:
-        """Reject a pending account and record reason"""
-        try:
-            self.db.begin_transaction()
-            
-            # Record rejection reason
-            query = """
-                INSERT INTO account_declines (account_number, reason) 
-                VALUES (%s, %s)
-            """
-            if not self.db.execute_query(query, (account_number, reason)):
-                raise Exception("Failed to record rejection reason")
-            
-            # Delete the account
-            query = "DELETE FROM accounts WHERE account_number = %s AND is_approved = 0"
-            if not self.db.execute_query(query, (account_number,)):
-                raise Exception("Failed to delete account")
-            
-            self.db.commit_transaction()
-            return True
-            
-        except Exception as e:
-            self.db.rollback_transaction()
-            return False
 
     def get_all_users(self) -> List[Dict[str, Any]]:
         """Get all users (excluding admin)"""
@@ -136,20 +106,48 @@ class AdminService:
         
         return stats
 
-    def get_rejected_accounts(self) -> List[Dict[str, Any]]:
-        """Get list of rejected accounts with reasons"""
-        query = """
-            SELECT account_number, reason, declined_at 
-            FROM account_declines 
-            ORDER BY declined_at DESC
-        """
-        results = self.db.fetch_all(query)
-        
-        return [{
-            'account_number': row['account_number'],
-            'reason': row['reason'],
-            'declined_at': row['declined_at']
-        } for row in results]
+    def reject_account(self, account_number: str, reason: str) -> bool:
+        """Reject a pending account and record reason with full account data"""
+        try:
+            self.db.begin_transaction()
+            
+            # Get full account info before deletion
+            check_query = """
+                SELECT name, hashed_pin, balance 
+                FROM accounts 
+                WHERE account_number = %s AND is_approved = 0
+            """
+            account_info = self.db.fetch_one(check_query, (account_number,))
+            
+            if not account_info:
+                self.db.rollback_transaction()
+                return False
+            
+            # Record rejection with full account data (if schema is enhanced)
+            decline_query = """
+                INSERT INTO account_declines (account_number, name, hashed_pin, original_balance, reason) 
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            if not self.db.execute_query(decline_query, (
+                account_number, 
+                account_info['name'], 
+                account_info['hashed_pin'],
+                account_info['balance'],
+                reason
+            )):
+                raise Exception("Failed to record rejection reason")
+            
+            # Delete the account
+            delete_query = "DELETE FROM accounts WHERE account_number = %s AND is_approved = 0"
+            if not self.db.execute_query(delete_query, (account_number,)):
+                raise Exception("Failed to delete account")
+            
+            self.db.commit_transaction()
+            return True
+            
+        except Exception as e:
+            self.db.rollback_transaction()
+            return False
 
     def suspend_account(self, account_number: str) -> bool:
         """Suspend an account (set approval to 0)"""
@@ -192,3 +190,236 @@ class AdminService:
         except Exception as e:
             self.db.rollback_transaction()
             return False
+
+    def update_user_details(self, account_number: str, name: str = None, balance: float = None) -> bool:
+        """Update user details (name and/or balance)"""
+        if account_number == '0000000001':
+            return False  # Cannot update admin account
+        
+        try:
+            updates = []
+            params = []
+            
+            if name is not None:
+                updates.append("name = %s")
+                params.append(name)
+            
+            if balance is not None:
+                updates.append("balance = %s")
+                params.append(balance)
+            
+            if not updates:
+                return False  # Nothing to update
+            
+            query = f"""
+                UPDATE accounts 
+                SET {', '.join(updates)} 
+                WHERE account_number = %s AND account_number != '0000000001'
+            """
+            params.append(account_number)
+            
+            return self.db.execute_query(query, tuple(params))
+            
+        except Exception as e:
+            return False
+
+    def delete_user_account(self, account_number: str) -> bool:
+        """Delete a user account and all related data (enhanced version of existing delete_account)"""
+        if account_number == '0000000001':
+            return False  # Cannot delete admin account
+        
+        try:
+            self.db.begin_transaction()
+            
+            # Delete loan payments first (due to foreign key constraints)
+            query = "DELETE FROM loan_payments WHERE account_number = %s"
+            self.db.execute_query(query, (account_number,))
+            
+            # Delete loans
+            query = "DELETE FROM loans WHERE account_number = %s"
+            self.db.execute_query(query, (account_number,))
+            
+            # Delete loan applications
+            query = "DELETE FROM loan_applications WHERE account_number = %s"
+            self.db.execute_query(query, (account_number,))
+            
+            # Delete transactions
+            query = "DELETE FROM transactions WHERE account_number = %s"
+            self.db.execute_query(query, (account_number,))
+            
+            # Delete account declines (if any)
+            query = "DELETE FROM account_declines WHERE account_number = %s"
+            self.db.execute_query(query, (account_number,))
+            
+            # Delete the account itself
+            query = "DELETE FROM accounts WHERE account_number = %s"
+            if not self.db.execute_query(query, (account_number,)):
+                raise Exception("Failed to delete account")
+            
+            self.db.commit_transaction()
+            return True
+            
+        except Exception as e:
+            self.db.rollback_transaction()
+            return False
+
+    def toggle_user_status(self, account_number: str) -> bool:
+        """Toggle user approval status (approved <-> suspended)"""
+        if account_number == '0000000001':
+            return False  # Cannot modify admin account
+        
+        try:
+            # Get current status
+            query = "SELECT is_approved FROM accounts WHERE account_number = %s"
+            result = self.db.fetch_one(query, (account_number,))
+            
+            if not result:
+                return False
+            
+            new_status = 0 if result['is_approved'] else 1
+            
+            query = """
+                UPDATE accounts 
+                SET is_approved = %s 
+                WHERE account_number = %s AND account_number != '0000000001'
+            """
+            return self.db.execute_query(query, (new_status, account_number))
+            
+        except Exception as e:
+            return False
+
+    def get_user_transaction_summary(self, account_number: str) -> Dict[str, Any]:
+        """Get user's transaction summary with counts by period"""
+        from datetime import datetime, timedelta
+        
+        today = datetime.now().date()
+        month_start = today.replace(day=1)
+        year_start = today.replace(month=1, day=1)
+        
+        # Get transaction counts by period
+        query = """
+            SELECT 
+                COUNT(CASE WHEN DATE(timestamp) = %s THEN 1 END) as today_count,
+                COUNT(CASE WHEN DATE(timestamp) >= %s THEN 1 END) as month_count,
+                COUNT(CASE WHEN DATE(timestamp) >= %s THEN 1 END) as year_count,
+                COUNT(*) as total_count
+            FROM transactions 
+            WHERE account_number = %s
+        """
+        result = self.db.fetch_one(query, (today, month_start, year_start, account_number))
+        
+        return {
+            'today': result['today_count'] if result else 0,
+            'this_month': result['month_count'] if result else 0,
+            'this_year': result['year_count'] if result else 0,
+            'total': result['total_count'] if result else 0
+        }
+
+    def get_user_transactions_by_period(self, account_number: str, period: str) -> List[Dict[str, Any]]:
+        """Get user transactions filtered by period (today/month/year/all)"""
+        from datetime import datetime
+        
+        today = datetime.now().date()
+        
+        # Define period filters
+        period_filters = {
+            'today': f"DATE(timestamp) = '{today}'",
+            'month': f"DATE(timestamp) >= '{today.replace(day=1)}'",
+            'year': f"DATE(timestamp) >= '{today.replace(month=1, day=1)}'",
+            'all': "1=1"  # No filter
+        }
+        
+        where_clause = period_filters.get(period, period_filters['all'])
+        
+        query = f"""
+            SELECT id, type, amount, timestamp
+            FROM transactions 
+            WHERE account_number = %s AND {where_clause}
+            ORDER BY timestamp DESC
+            LIMIT 100
+        """
+        
+        results = self.db.fetch_all(query, (account_number,))
+        
+        return [{
+            'id': row['id'],
+            'type': row['type'],
+            'amount': float(row['amount']),
+            'timestamp': row['timestamp'],
+            'formatted_amount': f"₱{float(row['amount']):,.2f}",
+            'type_display': self._format_transaction_type(row['type'])
+        } for row in results]
+
+    def _format_transaction_type(self, transaction_type: str) -> str:
+        """Format transaction type for display"""
+        type_map = {
+            'deposit': '💰 Deposit',
+            'withdrawal': '💸 Withdrawal', 
+            'transfer_in': '📥 Transfer In',
+            'transfer_out': '📤 Transfer Out',
+            'loan_disbursement': '🏦 Loan Disbursement',
+            'loan_payment': '💳 Loan Payment'
+        }
+        return type_map.get(transaction_type, transaction_type.title())
+
+    def get_declined_accounts(self) -> List[Dict[str, Any]]:
+        """Get all declined/suspended accounts from account_declines table"""
+        query = """
+            SELECT account_number, reason, declined_at 
+            FROM account_declines 
+            ORDER BY declined_at DESC
+        """
+        results = self.db.fetch_all(query)
+        
+        return [{
+            'account_number': row['account_number'],
+            'reason': row['reason'],
+            'declined_at': row['declined_at']
+        } for row in results]
+
+    def reactivate_declined_account(self, account_number: str) -> bool:
+        """Reactivate a declined account by moving it back to accounts table"""
+        try:
+            self.db.begin_transaction()
+            
+            # Get full declined account info (enhanced schema)
+            check_query = """
+                SELECT account_number, name, hashed_pin, original_balance, reason 
+                FROM account_declines 
+                WHERE account_number = %s
+            """
+            declined_record = self.db.fetch_one(check_query, (account_number,))
+            
+            if not declined_record:
+                self.db.rollback_transaction()
+                return False
+            
+            # Restore account with original data and approved status
+            insert_query = """
+                INSERT INTO accounts (account_number, name, hashed_pin, balance, is_approved) 
+                VALUES (%s, %s, %s, %s, 1)
+            """
+            if not self.db.execute_query(insert_query, (
+                declined_record['account_number'],
+                declined_record['name'],
+                declined_record['hashed_pin'],
+                declined_record['original_balance']
+            )):
+                raise Exception("Failed to reactivate account")
+            
+            # Remove from declines table
+            delete_query = "DELETE FROM account_declines WHERE account_number = %s"
+            if not self.db.execute_query(delete_query, (account_number,)):
+                raise Exception("Failed to remove from declines table")
+            
+            self.db.commit_transaction()
+            return True
+            
+        except Exception as e:
+            self.db.rollback_transaction()
+            return False
+
+    def delete_declined_account_permanently(self, account_number: str) -> bool:
+        """Permanently delete a declined account from account_declines table"""
+        query = "DELETE FROM account_declines WHERE account_number = %s"
+        return self.db.execute_query(query, (account_number,))
